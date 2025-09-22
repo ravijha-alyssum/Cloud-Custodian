@@ -30,7 +30,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4 # Updated for consistency
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: us-east-1 # Change to your desired AWS region
+          aws-region: ap-south-1 # Change to your desired AWS region
 
       # --- Azure Authentication ---
       - name: Login to Azure
