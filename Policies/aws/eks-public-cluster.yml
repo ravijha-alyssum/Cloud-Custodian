@@ -1,6 +1,7 @@
 policies:
   - name: eks-public-cluster-endpoints
-    resource: aws.eks-cluster
+    # The resource name has been corrected from 'aws.eks-cluster' to 'aws.eks'
+    resource: aws.eks
     comment: |
       This policy identifies EKS clusters with publicly accessible API server endpoints.
     filters:
