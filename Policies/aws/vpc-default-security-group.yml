@@ -12,9 +12,9 @@ policies:
     resource: aws.security-group
     comment: |
       This policy flags default security groups that have any inbound traffic rules.
-      Default security groups should typically have no inbound rules to remain secure.
+      The default SG is identified by its name being 'default'.
     filters:
-      # First, find only the security groups that are "default"
-      - type: default-sg
+      # Correctly filter for the security group whose name is 'default'
+      - GroupName: "default"
       # Then, from that group, find any that have inbound rules defined
       - IpPermissions: not-empty
