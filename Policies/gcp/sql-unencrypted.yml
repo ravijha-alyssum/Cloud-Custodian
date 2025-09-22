@@ -1,0 +1,11 @@
+policies:
+  - name: gcp-sql-instance-unencrypted
+    resource: gcp.sql-instance
+    comment: |
+      This policy identifies Cloud SQL instances that are not using a customer-managed
+      encryption key (CMEK). GCP encrypts data by default, so this policy checks for the
+      absence of a user-specified key.
+    filters:
+      - type: value
+        key: diskEncryptionConfiguration.kmsKeyName
+        value: absent

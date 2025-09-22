@@ -1,0 +1,8 @@
+policies:
+  - name: vpc-default-sg-inbound-rules
+    resource: aws.vpc
+    comment: |
+      This policy flags default security groups that have inbound traffic rules.
+    filters:
+      - type: default-sg
+        inbound: true

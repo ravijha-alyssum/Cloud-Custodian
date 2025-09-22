@@ -1,0 +1,10 @@
+policies:
+  - name: azure-sql-db-unencrypted
+    resource: azure.sql-database
+    comment: |
+      This policy identifies Azure SQL Databases that do not have transparent data encryption enabled.
+    filters:
+      - type: value
+        key: properties.transparentDataEncryption.status
+        op: ne
+        value: "Enabled"

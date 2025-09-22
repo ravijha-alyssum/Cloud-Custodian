@@ -1,0 +1,70 @@
+name: Cloud Custodian Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud_provider:
+        description: 'Cloud Provider to Scan'
+        required: true
+        default: 'aws'
+        type: choice
+        options:
+          - aws
+          - azure
+          - gcp
+
+jobs:
+  run-cloud-custodian:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC authentication
+      contents: read   # Required to checkout the repository
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # --- AWS Authentication ---
+      - name: Configure AWS Credentials
+        if: ${{ github.event.inputs.cloud_provider == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ap-south-1 # Change to your desired AWS region
+
+      # --- Azure Authentication ---
+      - name: Login to Azure
+        if: ${{ github.event.inputs.cloud_provider == 'azure' }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # --- GCP Authentication ---
+      - name: Authenticate to Google Cloud
+        if: ${{ github.event.inputs.cloud_provider == 'gcp' }}
+        uses: 'google-github-actions/auth@v0'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      # --- Setup Cloud Custodian ---
+      - name: Setup Cloud Custodian
+        uses: gscho/setup-cloud-custodian@v1
+        with:
+          # These inputs dynamically install provider packages based on user selection
+          include-azure: ${{ github.event.inputs.cloud_provider == 'azure' }}
+          include-gcp: ${{ github.event.inputs.cloud_provider == 'gcp' }}
+
+      # --- Run the Scan ---
+      - name: Run Cloud Custodian Scan
+        id: custodian-scan
+        run: |
+          PROVIDER=${{ github.event.inputs.cloud_provider }}
+          
+          custodian run --output-dir="output-$PROVIDER" "Policies/$PROVIDER/"
+
+      # --- Upload Results ---
+      - name: Upload Scan Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: custodian-report-${{ github.event.inputs.cloud_provider }}
+          path: output-${{ github.event.inputs.cloud_provider }}/

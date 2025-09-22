@@ -1,0 +1,13 @@
+policies:
+  - name: gcp-firewall-open-ingress-any-port
+    resource: gcp.firewall
+    comment: |
+      This policy flags any GCP Firewall rule that allows inbound traffic from any source (0.0.0.0/0)
+      to all ports.
+    filters:
+      - direction: INGRESS
+      - sourceRanges:
+        - "0.0.0.0/0"
+      - type: value
+        key: "allowed[].ports"
+        value: absent # If the ports key is absent, it means all ports are allowed.

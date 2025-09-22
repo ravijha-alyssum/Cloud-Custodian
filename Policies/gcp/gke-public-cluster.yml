@@ -1,0 +1,10 @@
+policies:
+  - name: gcp-gke-cluster-public-endpoint
+    resource: gcp.gke-cluster
+    comment: |
+      This policy identifies Google Kubernetes Engine (GKE) clusters that have a public endpoint,
+      making the control plane accessible from the internet.
+    filters:
+      - type: value
+        key: privateClusterConfig.enablePrivateEndpoint
+        value: false

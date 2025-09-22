@@ -1,0 +1,8 @@
+policies:
+  - name: gcp-instance-missing-labels
+    resource: gcp.instance
+    comment: |
+      This policy finds all GCP Compute Engine instances that are missing a 'department' label.
+      Note: GCP uses 'labels' instead of 'tags'.
+    filters:
+      - "labels.department": absent

@@ -1,0 +1,7 @@
+policies:
+  - name: azure-vm-missing-tags
+    resource: azure.vm
+    comment: |
+      This policy finds all Azure Virtual Machines that are missing a 'Department' tag.
+    filters:
+      - "tag:Department": absent

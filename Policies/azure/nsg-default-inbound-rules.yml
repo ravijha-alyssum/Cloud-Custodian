@@ -1,0 +1,11 @@
+policies:
+  - name: azure-nsg-risky-inbound-rules
+    resource: azure.networksecuritygroup
+    comment: |
+      This policy flags any Network Security Group (NSG) that has an inbound rule allowing traffic
+      from any source ('*' or 'Internet').
+    filters:
+      - type: security-rule
+        direction: Inbound
+        access: Allow
+        source: "*"

@@ -1,0 +1,7 @@
+policies:
+  - name: s3-public-access
+    resource: aws.s3
+    comment: |
+      This policy identifies all S3 buckets that are publicly accessible via ACLs.
+    filters:
+      - type: global-grants

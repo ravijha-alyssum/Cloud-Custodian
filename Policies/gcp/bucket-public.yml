@@ -1,0 +1,15 @@
+policies:
+  - name: gcp-storage-bucket-public
+    resource: gcp.bucket
+    comment: |
+      This policy identifies all GCP Storage Buckets that are publicly accessible to 'allUsers'
+      or 'allAuthenticatedUsers'.
+    filters:
+      - type: iam-policy
+        doc:
+          key: "bindings[].members[]"
+          value: present
+          expr: intersect
+          value_from:
+            - "allUsers"
+            - "allAuthenticatedUsers"

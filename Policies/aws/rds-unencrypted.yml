@@ -1,0 +1,9 @@
+policies:
+  - name: rds-unencrypted-instances
+    resource: aws.rds
+    comment: |
+      This policy identifies any RDS instances that do not have storage encryption enabled.
+    filters:
+      - type: value
+        key: StorageEncrypted
+        value: false

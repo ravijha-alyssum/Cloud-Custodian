@@ -1,0 +1,10 @@
+policies:
+  - name: azure-storage-container-public-access
+    resource: azure.storage-container
+    comment: |
+      This policy identifies any Azure Storage Containers that allow public blob access.
+    filters:
+      - type: value
+        key: properties.publicAccess
+        value: "Blob" 
+        # Other possible values are "Container" or "None"

@@ -1,0 +1,10 @@
+policies:
+  - name: azure-aks-public-cluster
+    resource: azure.aks
+    comment: |
+      This policy identifies Azure Kubernetes Service (AKS) clusters that have a public fqdn,
+      indicating a publicly accessible API server.
+    filters:
+      - type: value
+        key: properties.fqdn
+        value: not-null
