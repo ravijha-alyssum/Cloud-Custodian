@@ -22,15 +22,15 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Also a good practice to update this to v4
 
       # --- AWS Authentication ---
       - name: Configure AWS Credentials
         if: ${{ github.event.inputs.cloud_provider == 'aws' }}
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4 # Updated for consistency
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ap-south-1 # Change to your desired AWS region
+          aws-region: us-east-1 # Change to your desired AWS region
 
       # --- Azure Authentication ---
       - name: Login to Azure
@@ -42,7 +42,7 @@ jobs:
       # --- GCP Authentication ---
       - name: Authenticate to Google Cloud
         if: ${{ github.event.inputs.cloud_provider == 'gcp' }}
-        uses: 'google-github-actions/auth@v0'
+        uses: 'google-github-actions/auth@v2' # Updated for consistency
         with:
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
@@ -59,12 +59,13 @@ jobs:
         id: custodian-scan
         run: |
           PROVIDER=${{ github.event.inputs.cloud_provider }}
-          
+          # Path uses "Policies" with a capital P to match your directory
           custodian run --output-dir="output-$PROVIDER" "Policies/$PROVIDER/"
 
       # --- Upload Results ---
       - name: Upload Scan Artifacts
-        uses: actions/upload-artifact@v3
+        # This is the line that fixes the error
+        uses: actions/upload-artifact@v4
         with:
           name: custodian-report-${{ github.event.inputs.cloud_provider }}
           path: output-${{ github.event.inputs.cloud_provider }}/
