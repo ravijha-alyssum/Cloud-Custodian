@@ -1,8 +1,20 @@
+# policies:
+#   - name: vpc-default-sg-inbound-rules
+#     resource: aws.vpc
+#     comment: |
+#       This policy flags default security groups that have inbound traffic rules.
+#     filters:
+#       - type: default-sg
+#         inbound: true
+
 policies:
-  - name: vpc-default-sg-inbound-rules
-    resource: aws.vpc
+  - name: aws-default-sg-has-inbound-rules
+    resource: aws.security-group
     comment: |
-      This policy flags default security groups that have inbound traffic rules.
+      This policy flags default security groups that have any inbound traffic rules.
+      Default security groups should typically have no inbound rules to remain secure.
     filters:
+      # First, find only the security groups that are "default"
       - type: default-sg
-        inbound: true
+      # Then, from that group, find any that have inbound rules defined
+      - IpPermissions: not-empty
