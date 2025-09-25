@@ -1,0 +1,110 @@
+name: Cloud Custodian Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud_provider:
+        description: 'Cloud Provider to Scan'
+        required: true
+        default: 'aws'
+        type: choice
+        options:
+          - aws
+          - azure
+          - gcp
+      aws_region:
+        description: 'AWS Region to Scan (if provider is aws)'
+        required: false
+        default: 'ap-south-1'
+
+jobs:
+  run-cloud-custodian:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        if: ${{ github.event.inputs.cloud_provider == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ github.event.inputs.aws_region }}
+
+      - name: Login to Azure
+        if: ${{ github.event.inputs.cloud_provider == 'azure' }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Authenticate to Google Cloud
+        if: ${{ github.event.inputs.cloud_provider == 'gcp' }}
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Setup Cloud Custodian
+        uses: gscho/setup-cloud-custodian@v1
+        with:
+          include-azure: ${{ github.event.inputs.cloud_provider == 'azure' }}
+          include-gcp: ${{ github.event.inputs.cloud_provider == 'gcp' }}
+
+      - name: Run Cloud Custodian Scan
+        id: custodian-scan
+        run: |
+          PROVIDER=${{ github.event.inputs.cloud_provider }}
+          custodian run --output-dir="output-$PROVIDER" "Policies/$PROVIDER/"
+
+      - name: Upload Scan Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: custodian-report-${{ github.event.inputs.cloud_provider }}
+          path: output-${{ github.event.inputs.cloud_provider }}/
+
+      # ====================================================================
+      # =============== NEW STEP TO INTEGRATE WITH DEFECTDOJO ==============
+      # ====================================================================
+      - name: Process and Upload to DefectDojo
+        if: success() # Only run if the scan was successful
+        run: |
+          PROVIDER=${{ github.event.inputs.cloud_provider }}
+          OUTPUT_DIR="output-$PROVIDER"
+          
+          # Use jq to transform each resources.json into the DefectDojo Generic format
+          # and combine them into a single report.
+          jq -n --arg provider "$PROVIDER" --arg date "$(date -u +%Y-%m-%d)" \
+            '[ inputs | . as $policy_results | .[0]."c7n:MatchedFilters"[0] as $policy_name | $policy_results | .[] | {
+                "title": ("Custodian Finding: " + $policy_name),
+                "description": ("Cloud Custodian found a non-compliant resource.\nPolicy: " + $policy_name + "\nResource ID: " + (.Name // .InstanceId // .Arn // .id)),
+                "severity": (."c7n:Policy".metadata.severity // "Medium"),
+                "date": $date,
+                "file_path": (.Arn // .id // "N/A"),
+                "unique_id_from_tool": (.Arn // .id // (.Name + .RegionInfo.Name)),
+                "references": ("https://cloudcustodian.io/docs/" + $provider + "/policies.html"),
+                "static_finding": false,
+                "dynamic_finding": true
+            } ] | { "findings": . }' \
+            $(find $OUTPUT_DIR -name resources.json -size +0) > defectdojo-report.json
+
+          # Check if the report has any findings before uploading
+          if [ $(jq '.findings | length' defectdojo-report.json) -eq 0 ]; then
+            echo "No findings to report to DefectDojo. Skipping upload."
+            exit 0
+          fi
+
+          echo "Uploading $(jq '.findings | length' defectdojo-report.json) findings to DefectDojo..."
+          
+          # Upload the combined and formatted report
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
+            -F "file=@defectdojo-report.json" \
+            -F "scan_type=Generic Findings Import" \
+            -F "engagement_name=CloudCustodian" \
+            -F "product_name=MyProduct" \
+            -F "auto_create_context=true" \
+            -F "close_old_findings=true" \
+            -F "skip_duplicates=true"
