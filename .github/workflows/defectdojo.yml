@@ -1,4 +1,4 @@
-name: Cloud Custodian Scan DefectDojo
+name: Cloud Custodian Scan
 
 on:
   workflow_dispatch:
@@ -66,10 +66,9 @@ jobs:
           path: output-${{ github.event.inputs.cloud_provider }}/
 
       - name: Process and Upload to DefectDojo
-        if: success() # Run for any provider as long as the scan succeeds
+        if: success()
         run: |
           PROVIDER=${{ github.event.inputs.cloud_provider }}
-          # This variable now correctly points to 'output-aws', 'output-azure', or 'output-gcp'
           OUTPUT_DIR="output-$PROVIDER"
           
           jq -n --arg provider "$PROVIDER" --arg date "$(date -u +%Y-%m-%d)" \
@@ -93,10 +92,13 @@ jobs:
 
           echo "Uploading $(jq '.findings | length' defectdojo-report.json) findings to DefectDojo..."
           
+          # THIS IS THE CORRECTED COMMAND
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
             -F "file=@defectdojo-report.json" \
             -F "scan_type=Generic Findings Import" \
-            -F "engagement_name=Cloud Custodian" \
+            -F "engagement_name=CloudCustodian \
             -F "product_name=Cloud Custodian Scans" \
-            -F "auto_create_context=true"   
+            -F "auto_create_context=true" 
+            
+            
