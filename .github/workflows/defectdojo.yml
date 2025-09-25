@@ -1,4 +1,4 @@
-name: Cloud Custodian Scan
+name: Cloud Custodian Scan DefectDojo
 
 on:
   workflow_dispatch:
@@ -65,21 +65,17 @@ jobs:
           name: custodian-report-${{ github.event.inputs.cloud_provider }}
           path: output-${{ github.event.inputs.cloud_provider }}/
 
-      # ====================================================================
-      # =============== NEW STEP TO INTEGRATE WITH DEFECTDOJO ==============
-      # ====================================================================
       - name: Process and Upload to DefectDojo
-        if: success() # Only run if the scan was successful
+        if: success() # Run for any provider as long as the scan succeeds
         run: |
           PROVIDER=${{ github.event.inputs.cloud_provider }}
+          # This variable now correctly points to 'output-aws', 'output-azure', or 'output-gcp'
           OUTPUT_DIR="output-$PROVIDER"
           
-          # Use jq to transform each resources.json into the DefectDojo Generic format
-          # and combine them into a single report.
           jq -n --arg provider "$PROVIDER" --arg date "$(date -u +%Y-%m-%d)" \
             '[ inputs | . as $policy_results | .[0]."c7n:MatchedFilters"[0] as $policy_name | $policy_results | .[] | {
                 "title": ("Custodian Finding: " + $policy_name),
-                "description": ("Cloud Custodian found a non-compliant resource.\nPolicy: " + $policy_name + "\nResource ID: " + (.Name // .InstanceId // .Arn // .id)),
+                "description": ("Cloud Custodian found a non-compliant resource.\nPolicy: " + $policy_name + "\nProvider: " + $provider + "\nResource ID: " + (.Name // .InstanceId // .Arn // .id)),
                 "severity": (."c7n:Policy".metadata.severity // "Medium"),
                 "date": $date,
                 "file_path": (.Arn // .id // "N/A"),
@@ -90,7 +86,6 @@ jobs:
             } ] | { "findings": . }' \
             $(find $OUTPUT_DIR -name resources.json -size +0) > defectdojo-report.json
 
-          # Check if the report has any findings before uploading
           if [ $(jq '.findings | length' defectdojo-report.json) -eq 0 ]; then
             echo "No findings to report to DefectDojo. Skipping upload."
             exit 0
@@ -98,13 +93,10 @@ jobs:
 
           echo "Uploading $(jq '.findings | length' defectdojo-report.json) findings to DefectDojo..."
           
-          # Upload the combined and formatted report
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
             -F "file=@defectdojo-report.json" \
             -F "scan_type=Generic Findings Import" \
-            -F "engagement_name=CloudCustodian" \
-            -F "product_name=MyProduct" \
-            -F "auto_create_context=true" \
-            -F "close_old_findings=true" \
-            -F "skip_duplicates=true"
+            -F "engagement_name=Cloud Custodian" \
+            -F "product_name=Cloud Custodian Scans" \
+            -F "auto_create_context=true"   
