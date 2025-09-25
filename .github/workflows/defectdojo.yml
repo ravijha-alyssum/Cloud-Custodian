@@ -1,4 +1,4 @@
-name: Cloud Custodian Scan
+name: Cloud Custodian Scan & DefectDojo
 
 on:
   workflow_dispatch:
@@ -97,7 +97,7 @@ jobs:
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
             -F "file=@defectdojo-report.json" \
             -F "scan_type=Generic Findings Import" \
-            -F "engagement_name=CloudCustodian \
+            -F "engagement_name=CloudCustodian" \
             -F "product_name=Cloud Custodian Scans" \
             -F "auto_create_context=true" 
             
