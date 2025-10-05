@@ -1,4 +1,4 @@
-name: Cloud Custodian Scan & DefectDojo
+name: Cloud Custodian 
 
 on:
   workflow_dispatch:
@@ -64,41 +64,3 @@ jobs:
         with:
           name: custodian-report-${{ github.event.inputs.cloud_provider }}
           path: output-${{ github.event.inputs.cloud_provider }}/
-
-      - name: Process and Upload to DefectDojo
-        if: success()
-        run: |
-          PROVIDER=${{ github.event.inputs.cloud_provider }}
-          OUTPUT_DIR="output-$PROVIDER"
-          
-          jq -n --arg provider "$PROVIDER" --arg date "$(date -u +%Y-%m-%d)" \
-            '[ inputs | . as $policy_results | .[0]."c7n:MatchedFilters"[0] as $policy_name | $policy_results | .[] | {
-                "title": ("Custodian Finding: " + $policy_name),
-                "description": ("Cloud Custodian found a non-compliant resource.\nPolicy: " + $policy_name + "\nProvider: " + $provider + "\nResource ID: " + (.Name // .InstanceId // .Arn // .id)),
-                "severity": (."c7n:Policy".metadata.severity // "Medium"),
-                "date": $date,
-                "file_path": (.Arn // .id // "N/A"),
-                "unique_id_from_tool": (.Arn // .id // (.Name + .RegionInfo.Name)),
-                "references": ("https://cloudcustodian.io/docs/" + $provider + "/policies.html"),
-                "static_finding": false,
-                "dynamic_finding": true
-            } ] | { "findings": . }' \
-            $(find $OUTPUT_DIR -name resources.json -size +0) > defectdojo-report.json
-
-          if [ $(jq '.findings | length' defectdojo-report.json) -eq 0 ]; then
-            echo "No findings to report to DefectDojo. Skipping upload."
-            exit 0
-          fi
-
-          echo "Uploading $(jq '.findings | length' defectdojo-report.json) findings to DefectDojo..."
-          
-          # THIS IS THE CORRECTED COMMAND
-          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
-            -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-            -F "file=@defectdojo-report.json" \
-            -F "scan_type=Generic Findings Import" \
-            -F "engagement_name=CloudCustodian" \
-            -F "product_name=Cloud Custodian Scans" \
-            -F "auto_create_context=true" 
-            
-            
